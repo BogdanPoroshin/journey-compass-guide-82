@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Layers, ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PointOfInterest, Route } from "@/api/types";
+import { PointOfInterest, Route, RouteWithDetails } from "@/api/types";
 
 interface MapViewProps {
   routes?: Route[];
@@ -29,10 +29,10 @@ const MapView = ({
   const [currentPoint, setCurrentPoint] = useState<PointOfInterest | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   
-  // Используем либо points из props, либо точки из выбранного маршрута
+  // We need to handle the case where Route doesn't have points property
   const displayPoints = points.length > 0 ? points : 
     (selectedRouteId && routes.length > 0) ? 
-      routes.find(route => route.id === selectedRouteId)?.points || [] : [];
+      (routes.find(route => route.id === selectedRouteId) as RouteWithDetails)?.points || [] : [];
 
   // This would be replaced with real map initialization
   useEffect(() => {
