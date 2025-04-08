@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Category, PointOfInterest, Review, Route, RouteWithDetails, User } from "./types";
@@ -66,7 +65,7 @@ export const getRoutes = async (filters?: any) => {
         *,
         route_categories!inner(category_id),
         categories:route_categories!inner(categories(*)),
-        creator:users(*),
+        creator:users!routes_creator_id_fkey(*),
         reviews(rating),
         route_images(*)
       `);
@@ -119,7 +118,6 @@ export const getRoutes = async (filters?: any) => {
         rating: avgRating,
         review_count: reviews.length,
         image_url: primaryImage?.image_url,
-        creator: route.creator as User,
         is_favorited: false
       };
     }) || [];
@@ -144,8 +142,8 @@ export const getRouteById = async (id: string, userId?: string) => {
         *,
         route_categories(category_id),
         categories:route_categories(categories(*)),
-        creator:users(*),
-        reviews(*, user:users(username, profile_image_url)),
+        creator:users!routes_creator_id_fkey(*),
+        reviews(*, user:users!reviews_user_id_fkey(username, profile_image_url)),
         route_images(*),
         route_points(*, point:points_of_interest(*))
       `)
@@ -318,7 +316,7 @@ export const getFavoriteRoutes = async (userId: string) => {
           *,
           route_categories!inner(category_id),
           categories:route_categories!inner(categories(*)),
-          creator:users(*),
+          creator:users!routes_creator_id_fkey(*),
           reviews(rating),
           route_images(*)
         )
