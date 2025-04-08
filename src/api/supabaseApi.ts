@@ -1,73 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-
-// Интерфейсы для работы с данными
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  full_name?: string;
-  profile_image_url?: string;
-  bio?: string;
-}
-
-export interface Route {
-  id: string;
-  title: string;
-  description: string;
-  creator_id: string;
-  duration: number;
-  distance: number | null;
-  difficulty_level: string | null;
-  estimated_cost: number | null;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Category {
-  id: number;
-  name: string;
-  description: string | null;
-}
-
-export interface RouteWithDetails extends Route {
-  categories: Category[];
-  creator: User;
-  rating: number;
-  review_count: number;
-  image_url?: string;
-  is_favorited?: boolean;
-}
-
-export interface PointOfInterest {
-  id: string;
-  name: string;
-  description: string | null;
-  latitude: number;
-  longitude: number;
-  address: string | null;
-  type: string | null;
-  contact_info: string | null;
-  website_url: string | null;
-  opening_hours: string | null;
-}
-
-export interface Review {
-  id: string;
-  route_id: string;
-  user_id: string;
-  rating: number;
-  comment: string | null;
-  visited_date: string | null;
-  created_at: string;
-  updated_at: string;
-  user: {
-    username: string;
-    profile_image_url: string | null;
-  };
-}
+import { Category, PointOfInterest, Review, Route, RouteWithDetails, User } from "./types";
 
 // Аутентификация
 export const loginUser = async (email: string, password: string) => {
@@ -88,7 +22,7 @@ export const loginUser = async (email: string, password: string) => {
       
     if (userError) throw userError;
     
-    return { user: userData, session: data.session };
+    return { user: userData as User, session: data.session };
   } catch (error: any) {
     toast({
       title: "Ошибка входа",
@@ -112,7 +46,7 @@ export const loginDemo = async () => {
     if (userError) throw userError;
     
     // Возвращаем информацию о демо-пользователе
-    return { user: userData, session: { user: { id: userData.id } } };
+    return { user: userData as User, session: { user: { id: userData?.id } } };
   } catch (error: any) {
     toast({
       title: "Ошибка входа в демо-режим",
@@ -167,7 +101,7 @@ export const getRoutes = async (filters?: any) => {
     if (error) throw error;
 
     // Преобразуем данные в нужный формат
-    const formattedRoutes: RouteWithDetails[] = data.map((route: any) => {
+    const formattedRoutes: RouteWithDetails[] = data?.map((route: any) => {
       // Вычисляем средний рейтинг
       const reviews = route.reviews || [];
       const totalRating = reviews.reduce((sum: number, review: any) => sum + review.rating, 0);
@@ -177,17 +111,17 @@ export const getRoutes = async (filters?: any) => {
       const primaryImage = route.route_images?.find((img: any) => img.is_primary) || route.route_images?.[0];
       
       // Категории маршрута
-      const categories = route.categories.map((item: any) => item.categories);
+      const categories = route.categories?.map((item: any) => item.categories) || [];
 
       return {
-        ...route,
+        ...(route as Route),
         categories,
         rating: avgRating,
         review_count: reviews.length,
         image_url: primaryImage?.image_url,
-        creator: route.creator
+        creator: route.creator as User
       };
-    });
+    }) || [];
 
     return formattedRoutes;
   } catch (error: any) {
@@ -232,29 +166,29 @@ export const getRouteById = async (id: string, userId?: string) => {
     }
 
     // Вычисляем средний рейтинг
-    const reviews = data.reviews || [];
+    const reviews = data?.reviews || [];
     const totalRating = reviews.reduce((sum: number, review: any) => sum + review.rating, 0);
     const avgRating = reviews.length > 0 ? totalRating / reviews.length : 0;
 
     // Категории маршрута
-    const categories = data.categories.map((item: any) => item.categories);
+    const categories = data?.categories?.map((item: any) => item.categories) || [];
 
     // Получаем основное изображение
-    const primaryImage = data.route_images?.find((img: any) => img.is_primary) || data.route_images?.[0];
+    const primaryImage = data?.route_images?.find((img: any) => img.is_primary) || data?.route_images?.[0];
 
     // Подготавливаем точки маршрута
-    const routePoints = data.route_points
-      .sort((a: any, b: any) => a.sequence_order - b.sequence_order)
-      .map((point: any) => point.point);
+    const routePoints = data?.route_points
+      ?.sort((a: any, b: any) => a.sequence_order - b.sequence_order)
+      ?.map((point: any) => point.point) || [];
 
     const routeWithDetails: RouteWithDetails = {
-      ...data,
+      ...(data as Route),
       categories,
       rating: avgRating,
       review_count: reviews.length,
       image_url: primaryImage?.image_url,
       is_favorited: isFavorited,
-      points: routePoints
+      points: routePoints as PointOfInterest[]
     };
 
     return routeWithDetails;
@@ -277,7 +211,7 @@ export const getCategories = async () => {
       .order('name');
 
     if (error) throw error;
-    return data;
+    return data as Category[];
   } catch (error: any) {
     toast({
       title: "Ошибка загрузки категорий",
@@ -360,7 +294,7 @@ export const addReview = async (routeId: string, userId: string, rating: number,
       description: "Ваш отзыв успешно добавлен."
     });
     
-    return data[0];
+    return data?.[0] as Review;
   } catch (error: any) {
     toast({
       title: "Ошибка добавления отзыва",
@@ -392,7 +326,7 @@ export const getFavoriteRoutes = async (userId: string) => {
     if (error) throw error;
 
     // Преобразуем данные в нужный формат
-    const formattedRoutes: RouteWithDetails[] = data.map((item: any) => {
+    const formattedRoutes: RouteWithDetails[] = data?.map((item: any) => {
       const route = item.routes;
       
       // Вычисляем средний рейтинг
@@ -404,18 +338,18 @@ export const getFavoriteRoutes = async (userId: string) => {
       const primaryImage = route.route_images?.find((img: any) => img.is_primary) || route.route_images?.[0];
       
       // Категории маршрута
-      const categories = route.categories.map((cat: any) => cat.categories);
+      const categories = route.categories?.map((cat: any) => cat.categories) || [];
 
       return {
-        ...route,
+        ...(route as Route),
         categories,
         rating: avgRating,
         review_count: reviews.length,
         image_url: primaryImage?.image_url,
         is_favorited: true,
-        creator: route.creator
+        creator: route.creator as User
       };
-    });
+    }) || [];
 
     return formattedRoutes;
   } catch (error: any) {
@@ -452,7 +386,7 @@ export const createRoute = async (routeData: any, userId: string) => {
     // Добавляем категории
     if (routeData.categories && routeData.categories.length > 0) {
       const categoryInserts = routeData.categories.map((categoryId: number) => ({
-        route_id: route.id,
+        route_id: route!.id,
         category_id: categoryId
       }));
       
@@ -468,7 +402,7 @@ export const createRoute = async (routeData: any, userId: string) => {
       const { error: imageError } = await supabase
         .from('route_images')
         .insert([{
-          route_id: route.id,
+          route_id: route!.id,
           image_url: routeData.image_url,
           caption: routeData.title,
           is_primary: true
@@ -502,14 +436,14 @@ export const createRoute = async (routeData: any, userId: string) => {
             .single();
           
           if (pointError) throw pointError;
-          pointId = newPoint.id;
+          pointId = newPoint!.id;
         }
         
         // Привязываем точку к маршруту
         const { error: routePointError } = await supabase
           .from('route_points')
           .insert([{
-            route_id: route.id,
+            route_id: route!.id,
             point_id: pointId,
             sequence_order: i + 1,
             stay_duration: point.stay_duration,
@@ -525,7 +459,7 @@ export const createRoute = async (routeData: any, userId: string) => {
       description: "Ваш маршрут успешно создан."
     });
     
-    return route;
+    return route as Route;
   } catch (error: any) {
     toast({
       title: "Ошибка создания маршрута",
@@ -567,7 +501,7 @@ export const createShareLink = async (routeId: string, userId: string, expiresIn
       description: "Ссылка для совместного использования создана успешно."
     });
     
-    return data[0];
+    return data?.[0];
   } catch (error: any) {
     toast({
       title: "Ошибка создания ссылки",

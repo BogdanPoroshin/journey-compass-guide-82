@@ -2,44 +2,37 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Layers, ArrowLeft, ArrowRight, Info } from "lucide-react";
+import { Layers, ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-interface Point {
-  id: number;
-  name: string;
-  description: string;
-  latitude: number;
-  longitude: number;
-  type: string;
-}
-
-interface Route {
-  id: number;
-  title: string;
-  points: Point[];
-}
+import { PointOfInterest, Route } from "@/api/types";
 
 interface MapViewProps {
-  routes: Route[];
+  routes?: Route[];
   selectedRouteId?: number;
   onRouteSelect?: (routeId: number) => void;
   height?: string;
   interactive?: boolean;
+  points?: PointOfInterest[];
 }
 
 // This is a mock component that would normally integrate with a real map library like Leaflet or Google Maps
 const MapView = ({ 
-  routes, 
+  routes = [], 
   selectedRouteId, 
   onRouteSelect, 
   height = "600px", 
-  interactive = true 
+  interactive = true,
+  points = []
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [currentPoint, setCurrentPoint] = useState<Point | null>(null);
+  const [currentPoint, setCurrentPoint] = useState<PointOfInterest | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  
+  // Используем либо points из props, либо точки из выбранного маршрута
+  const displayPoints = points.length > 0 ? points : 
+    (selectedRouteId && routes.length > 0) ? 
+      routes.find(route => route.id === selectedRouteId)?.points || [] : [];
 
   // This would be replaced with real map initialization
   useEffect(() => {
@@ -53,39 +46,30 @@ const MapView = ({
 
   // This would be replaced with real map markers and routes
   useEffect(() => {
-    if (mapLoaded && selectedRouteId) {
-      const selectedRoute = routes.find(route => route.id === selectedRouteId);
-      if (selectedRoute && selectedRoute.points.length > 0) {
-        setCurrentPoint(selectedRoute.points[0]);
-      }
+    if (mapLoaded && displayPoints.length > 0) {
+      setCurrentPoint(displayPoints[0]);
     }
-  }, [mapLoaded, routes, selectedRouteId]);
+  }, [mapLoaded, displayPoints]);
 
   const handleNextPoint = () => {
-    if (!selectedRouteId || !currentPoint) return;
+    if (!currentPoint) return;
     
-    const selectedRoute = routes.find(route => route.id === selectedRouteId);
-    if (!selectedRoute) return;
-    
-    const currentIndex = selectedRoute.points.findIndex(p => p.id === currentPoint.id);
-    if (currentIndex < selectedRoute.points.length - 1) {
-      setCurrentPoint(selectedRoute.points[currentIndex + 1]);
+    const currentIndex = displayPoints.findIndex(p => p.id === currentPoint.id);
+    if (currentIndex < displayPoints.length - 1) {
+      setCurrentPoint(displayPoints[currentIndex + 1]);
     }
   };
 
   const handlePrevPoint = () => {
-    if (!selectedRouteId || !currentPoint) return;
+    if (!currentPoint) return;
     
-    const selectedRoute = routes.find(route => route.id === selectedRouteId);
-    if (!selectedRoute) return;
-    
-    const currentIndex = selectedRoute.points.findIndex(p => p.id === currentPoint.id);
+    const currentIndex = displayPoints.findIndex(p => p.id === currentPoint.id);
     if (currentIndex > 0) {
-      setCurrentPoint(selectedRoute.points[currentIndex - 1]);
+      setCurrentPoint(displayPoints[currentIndex - 1]);
     }
   };
 
-  const getPointTypeIcon = (type: string) => {
+  const getPointTypeIcon = (type: string = '') => {
     switch (type.toLowerCase()) {
       case 'restaurant':
         return '🍽️';
@@ -119,7 +103,7 @@ const MapView = ({
         }}
       >
         {!mapLoaded ? (
-          <div className="text-travel-primary">Loading map...</div>
+          <div className="text-travel-primary">Загрузка карты...</div>
         ) : (
           <div className="absolute inset-0 bg-black/10"></div>
         )}
@@ -136,16 +120,16 @@ const MapView = ({
             </PopoverTrigger>
             <PopoverContent className="w-40 p-0">
               <div className="p-2">
-                <p className="text-xs font-medium mb-2">Map Layers</p>
+                <p className="text-xs font-medium mb-2">Слои карты</p>
                 <div className="space-y-1">
                   <Button variant="ghost" size="sm" className="w-full justify-start text-sm">
-                    Standard
+                    Стандартная
                   </Button>
                   <Button variant="ghost" size="sm" className="w-full justify-start text-sm">
-                    Satellite
+                    Спутник
                   </Button>
                   <Button variant="ghost" size="sm" className="w-full justify-start text-sm">
-                    Terrain
+                    Рельеф
                   </Button>
                 </div>
               </div>
@@ -155,11 +139,11 @@ const MapView = ({
       )}
       
       {/* Route selection */}
-      {interactive && routes.length > 0 && (
+      {interactive && (routes.length > 0 || displayPoints.length > 0) && (
         <div className="absolute bottom-4 left-4 right-4 z-10">
           <Card>
             <CardContent className="p-3">
-              {selectedRouteId ? (
+              {selectedRouteId && routes.find(r => r.id === selectedRouteId) ? (
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-medium text-sm">
@@ -172,7 +156,7 @@ const MapView = ({
                         size="icon" 
                         className="h-8 w-8"
                         onClick={handlePrevPoint}
-                        disabled={!currentPoint || routes.find(r => r.id === selectedRouteId)?.points.indexOf(currentPoint) === 0}
+                        disabled={!currentPoint || displayPoints.indexOf(currentPoint) === 0}
                       >
                         <ArrowLeft className="h-4 w-4" />
                       </Button>
@@ -181,12 +165,7 @@ const MapView = ({
                         size="icon" 
                         className="h-8 w-8"
                         onClick={handleNextPoint}
-                        disabled={
-                          !currentPoint || 
-                          !routes.find(r => r.id === selectedRouteId)?.points ||
-                          routes.find(r => r.id === selectedRouteId)?.points.indexOf(currentPoint) === 
-                            (routes.find(r => r.id === selectedRouteId)?.points.length || 0) - 1
-                        }
+                        disabled={!currentPoint || displayPoints.indexOf(currentPoint) === displayPoints.length - 1}
                       >
                         <ArrowRight className="h-4 w-4" />
                       </Button>
@@ -196,7 +175,46 @@ const MapView = ({
                   {currentPoint && (
                     <div className="bg-muted p-2 rounded-sm text-xs">
                       <div className="flex items-start gap-2">
-                        <span className="text-xl leading-none mt-1">{getPointTypeIcon(currentPoint.type)}</span>
+                        <span className="text-xl leading-none mt-1">{getPointTypeIcon(currentPoint.type || '')}</span>
+                        <div>
+                          <p className="font-medium">{currentPoint.name}</p>
+                          <p className="text-muted-foreground line-clamp-1">{currentPoint.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : points.length > 0 ? (
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-sm">Точки маршрута</h3>
+                    
+                    <div className="flex gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={handlePrevPoint}
+                        disabled={!currentPoint || displayPoints.indexOf(currentPoint) === 0}
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={handleNextPoint}
+                        disabled={!currentPoint || displayPoints.indexOf(currentPoint) === displayPoints.length - 1}
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {currentPoint && (
+                    <div className="bg-muted p-2 rounded-sm text-xs">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xl leading-none mt-1">{getPointTypeIcon(currentPoint.type || '')}</span>
                         <div>
                           <p className="font-medium">{currentPoint.name}</p>
                           <p className="text-muted-foreground line-clamp-1">{currentPoint.description}</p>
@@ -210,7 +228,7 @@ const MapView = ({
                   {routes.map(route => (
                     <Badge 
                       key={route.id}
-                      onClick={() => onRouteSelect && onRouteSelect(route.id)}
+                      onClick={() => onRouteSelect && onRouteSelect(Number(route.id))}
                       className="cursor-pointer hover:bg-travel-primary"
                     >
                       {route.title}
@@ -232,7 +250,7 @@ const MapView = ({
         }}>
           <div className="bg-travel-primary text-white p-1 rounded-full shadow-lg">
             <div className="h-6 w-6 flex items-center justify-center">
-              {getPointTypeIcon(currentPoint.type)}
+              {getPointTypeIcon(currentPoint.type || '')}
             </div>
           </div>
         </div>

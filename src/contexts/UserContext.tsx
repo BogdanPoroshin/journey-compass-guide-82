@@ -52,13 +52,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       // Получаем информацию о пользователе
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select()
         .eq('email', email)
         .single();
         
       if (userError) throw userError;
       
-      setUser(userData);
+      setUser(userData as User);
       return true;
     } catch (error: any) {
       toast({
