@@ -18,46 +18,49 @@ import {
   Trash2,
   ArrowRight,
 } from "lucide-react";
+import { useUser } from "@/contexts/UserContext";
+import { addReview } from "@/api/supabaseApi";
 
 interface ReviewProps {
-  id: number;
+  id: string;
   rating: number;
   comment: string;
   visitedDate: string;
   createdAt: string;
   user: {
-    id: number;
+    id: string;
     username: string;
     profileImage?: string;
   };
   isCurrentUserReview?: boolean;
-  onEdit?: (reviewId: number) => void;
-  onDelete?: (reviewId: number) => void;
+  onEdit?: (reviewId: string) => void;
+  onDelete?: (reviewId: string) => void;
 }
 
 interface ReviewSectionProps {
+  routeId: string;
   reviews: ReviewProps[];
   averageRating: number;
   totalReviews: number;
-  isLoggedIn: boolean;
   hasUserReviewed: boolean;
-  onAddReview?: (rating: number, comment: string, visitedDate: string) => void;
+  onAddReview?: () => void;
   onLoadMore?: () => void;
   hasMoreReviews?: boolean;
   className?: string;
 }
 
 const ReviewSection = ({
+  routeId,
   reviews,
   averageRating,
   totalReviews,
-  isLoggedIn,
   hasUserReviewed,
   onAddReview,
   onLoadMore,
   hasMoreReviews = false,
   className = "",
 }: ReviewSectionProps) => {
+  const { user } = useUser();
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
   const [visitedDate, setVisitedDate] = useState("");
@@ -76,18 +79,28 @@ const ReviewSection = ({
     setHoverRating(0);
   };
 
-  const handleSubmitReview = () => {
+  const handleSubmitReview = async () => {
     if (userRating === 0) {
-      alert("Please select a rating!");
+      alert("Пожалуйста, выберите рейтинг!");
       return;
     }
 
-    if (onAddReview) {
-      onAddReview(userRating, userComment, visitedDate);
+    if (!user) {
+      alert("Необходимо войти в систему!");
+      return;
+    }
+
+    const result = await addReview(routeId, user.id, userRating, userComment, visitedDate);
+    
+    if (result) {
       setUserRating(0);
       setUserComment("");
       setVisitedDate("");
       setIsAddingReview(false);
+      
+      if (onAddReview) {
+        onAddReview();
+      }
     }
   };
 
@@ -152,7 +165,7 @@ const ReviewSection = ({
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span>Reviews</span>
+              <span>Отзывы</span>
               <div className="flex items-center">
                 <div className="flex">{renderStars(averageRating)}</div>
                 <span className="ml-2 text-sm font-normal">
@@ -161,12 +174,12 @@ const ReviewSection = ({
               </div>
             </div>
 
-            {isLoggedIn && !hasUserReviewed && !isAddingReview && (
+            {user && !hasUserReviewed && !isAddingReview && (
               <Button 
                 onClick={() => setIsAddingReview(true)}
                 className="bg-travel-primary hover:bg-travel-primary/90"
               >
-                Add Review
+                Добавить отзыв
               </Button>
             )}
           </CardTitle>
@@ -175,7 +188,7 @@ const ReviewSection = ({
           {isAddingReview && (
             <Card className="mb-6 border-travel-primary/30">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Write a review</CardTitle>
+                <CardTitle className="text-base">Напишите отзыв</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -183,7 +196,7 @@ const ReviewSection = ({
 
                   <div>
                     <label htmlFor="visited-date" className="block text-sm font-medium mb-1">
-                      When did you visit?
+                      Когда вы посетили это место?
                     </label>
                     <input
                       type="date"
@@ -196,11 +209,11 @@ const ReviewSection = ({
 
                   <div>
                     <label htmlFor="review-comment" className="block text-sm font-medium mb-1">
-                      Your review
+                      Ваш отзыв
                     </label>
                     <Textarea
                       id="review-comment"
-                      placeholder="Share your experience..."
+                      placeholder="Поделитесь своими впечатлениями..."
                       value={userComment}
                       onChange={(e) => setUserComment(e.target.value)}
                       rows={4}
@@ -213,10 +226,10 @@ const ReviewSection = ({
                   variant="outline"
                   onClick={() => setIsAddingReview(false)}
                 >
-                  Cancel
+                  Отмена
                 </Button>
                 <Button onClick={handleSubmitReview} className="bg-travel-primary hover:bg-travel-primary/90">
-                  Submit Review
+                  Отправить отзыв
                 </Button>
               </CardFooter>
             </Card>
@@ -224,7 +237,7 @@ const ReviewSection = ({
 
           {reviews.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No reviews yet. Be the first to review!
+              Отзывов пока нет. Будьте первым, кто оставит отзыв!
             </div>
           ) : (
             <div className="space-y-4">
@@ -282,7 +295,7 @@ const ReviewSection = ({
                   {review.visitedDate && (
                     <div className="flex items-center text-xs text-muted-foreground mt-1">
                       <Calendar className="h-3.5 w-3.5 mr-1" />
-                      <span>Visited on {new Date(review.visitedDate).toLocaleDateString()}</span>
+                      <span>Посещено {new Date(review.visitedDate).toLocaleDateString()}</span>
                     </div>
                   )}
 
@@ -295,7 +308,7 @@ const ReviewSection = ({
           {hasMoreReviews && (
             <div className="mt-4 flex justify-center">
               <Button variant="outline" onClick={onLoadMore} className="flex items-center gap-1">
-                View more reviews
+                Показать больше отзывов
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </div>

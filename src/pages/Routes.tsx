@@ -1,170 +1,52 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import FilterBar from "@/components/FilterBar";
 import RouteCard from "@/components/RouteCard";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
+import { getRoutes, getCategories, RouteWithDetails, Category } from "@/api/supabaseApi";
+import { useUser } from "@/contexts/UserContext";
+import { Link } from "react-router-dom";
 
-// Mock data
-const mockRoutes = [
-  {
-    id: 1,
-    title: "Pacific Coast Highway",
-    description: "A scenic drive along California's stunning coastline featuring beaches, cliffs and quaint towns.",
-    imageUrl: "https://images.unsplash.com/photo-1465447142348-e9952c393450?q=80&w=500&auto=format&fit=crop",
-    duration: 3,
-    distance: 123,
-    difficulty: "Moderate",
-    cost: 500,
-    rating: 4.8,
-    reviewCount: 124,
-    categories: [
-      { id: 1, name: "Road Trip" },
-      { id: 2, name: "Beach" },
-    ],
-    creator: {
-      id: 101,
-      username: "travelguru",
-      imageUrl: "https://i.pravatar.cc/150?img=1",
-    },
-  },
-  {
-    id: 2,
-    title: "Japan's Golden Route",
-    description: "Explore the best of Japan from Tokyo to Kyoto, experiencing traditional culture and modern attractions.",
-    imageUrl: "https://images.unsplash.com/photo-1528164344705-47542687000d?q=80&w=500&auto=format&fit=crop",
-    duration: 7,
-    distance: 450,
-    difficulty: "Easy",
-    cost: 1200,
-    rating: 4.9,
-    reviewCount: 87,
-    categories: [
-      { id: 3, name: "Cultural" },
-      { id: 4, name: "City" },
-    ],
-    creator: {
-      id: 102,
-      username: "wanderlust",
-      imageUrl: "https://i.pravatar.cc/150?img=2",
-    },
-  },
-  {
-    id: 3,
-    title: "Alpine Adventure",
-    description: "Trek through Switzerland's breathtaking mountain landscapes and charming villages.",
-    imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=500&auto=format&fit=crop",
-    duration: 5,
-    distance: 75,
-    difficulty: "Hard",
-    cost: 900,
-    rating: 4.7,
-    reviewCount: 53,
-    categories: [
-      { id: 5, name: "Mountain" },
-      { id: 6, name: "Adventure" },
-    ],
-    creator: {
-      id: 103,
-      username: "alpinist",
-      imageUrl: "https://i.pravatar.cc/150?img=3",
-    },
-  },
-  {
-    id: 4,
-    title: "Tropical Paradise Tour",
-    description: "Island hopping through Thailand's most beautiful beaches and hidden coves.",
-    imageUrl: "https://images.unsplash.com/photo-1489493887464-892be6d1daae?q=80&w=500&auto=format&fit=crop",
-    duration: 10,
-    distance: 200,
-    difficulty: "Easy",
-    cost: 1500,
-    rating: 4.6,
-    reviewCount: 98,
-    categories: [
-      { id: 2, name: "Beach" },
-      { id: 7, name: "Nature" },
-    ],
-    creator: {
-      id: 104,
-      username: "islandhopper",
-      imageUrl: "https://i.pravatar.cc/150?img=4",
-    },
-  },
-  {
-    id: 5,
-    title: "Tuscany Wine Trail",
-    description: "A gastronomic journey through Italy's wine country with stops at historic vineyards and medieval towns.",
-    imageUrl: "https://images.unsplash.com/photo-1543218024-57a70143c369?q=80&w=500&auto=format&fit=crop",
-    duration: 4,
-    distance: 150,
-    difficulty: "Easy",
-    cost: 1100,
-    rating: 4.9,
-    reviewCount: 76,
-    categories: [
-      { id: 8, name: "Food & Wine" },
-      { id: 9, name: "Cultural" },
-    ],
-    creator: {
-      id: 105,
-      username: "winelover",
-      imageUrl: "https://i.pravatar.cc/150?img=5",
-    },
-  },
-  {
-    id: 6,
-    title: "Inca Trail to Machu Picchu",
-    description: "Follow ancient paths through the Andes to reach the iconic lost city of the Incas.",
-    imageUrl: "https://images.unsplash.com/photo-1526392060635-9d6019884377?q=80&w=500&auto=format&fit=crop",
-    duration: 4,
-    distance: 43,
-    difficulty: "Hard",
-    cost: 800,
-    rating: 4.8,
-    reviewCount: 142,
-    categories: [
-      { id: 5, name: "Mountain" },
-      { id: 6, name: "Adventure" },
-      { id: 9, name: "Cultural" },
-    ],
-    creator: {
-      id: 106,
-      username: "hikingpro",
-      imageUrl: "https://i.pravatar.cc/150?img=6",
-    },
-  }
-];
-
-const categories = [
-  { id: 1, name: "Road Trip" },
-  { id: 2, name: "Beach" },
-  { id: 3, name: "Cultural" },
-  { id: 4, name: "City" },
-  { id: 5, name: "Mountain" },
-  { id: 6, name: "Adventure" },
-  { id: 7, name: "Nature" },
-  { id: 8, name: "Food & Wine" },
-];
-
-const Routes = () => {
+const RoutesPage = () => {
+  const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
-  const [favorites, setFavorites] = useState<number[]>([]);
+  const [routes, setRoutes] = useState<RouteWithDetails[]>([]);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [filters, setFilters] = useState({
-    categories: [],
-    difficulty: null,
+    categories: [] as number[],
+    difficulty: null as string | null,
     duration: [1, 14],
     cost: [0, 5000],
     sort: "popular"
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Mock filter functionality
-  const filteredRoutes = mockRoutes.filter(route => {
-    if (searchQuery && !route.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      
+      // Получаем категории
+      const categories = await getCategories();
+      setAllCategories(categories);
+      
+      // Получаем маршруты
+      const routes = await getRoutes();
+      setRoutes(routes);
+      
+      setLoading(false);
+    };
+
+    fetchData();
+  }, []);
+
+  // Фильтрация маршрутов
+  const filteredRoutes = routes.filter(route => {
+    if (searchQuery && !route.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
+        !route.description.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     
@@ -172,7 +54,7 @@ const Routes = () => {
       return false;
     }
     
-    if (filters.difficulty && route.difficulty !== filters.difficulty) {
+    if (filters.difficulty && route.difficulty_level !== filters.difficulty) {
       return false;
     }
     
@@ -180,40 +62,43 @@ const Routes = () => {
       return false;
     }
     
-    if (route.cost < filters.cost[0] || route.cost > filters.cost[1]) {
+    if (route.estimated_cost && (route.estimated_cost < filters.cost[0] || route.estimated_cost > filters.cost[1])) {
       return false;
     }
     
     return true;
   });
 
-  // Mock API call for filtering/searching
+  // Сортировка маршрутов
+  const sortedRoutes = [...filteredRoutes].sort((a, b) => {
+    if (filters.sort === "popular") {
+      return b.rating - a.rating;
+    } else if (filters.sort === "newest") {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    } else if (filters.sort === "oldest") {
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    }
+    return 0;
+  });
+
   const handleFilterChange = (newFilters: any) => {
     setLoading(true);
     setFilters(newFilters);
     
-    // Simulate API delay
+    // Имитируем задержку API
     setTimeout(() => {
       setLoading(false);
-    }, 500);
+    }, 200);
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // Simulate API delay
+    // Имитируем задержку API
     setTimeout(() => {
       setLoading(false);
-    }, 500);
-  };
-
-  const toggleFavorite = (routeId: number) => {
-    if (favorites.includes(routeId)) {
-      setFavorites(favorites.filter(id => id !== routeId));
-    } else {
-      setFavorites([...favorites, routeId]);
-    }
+    }, 200);
   };
 
   return (
@@ -222,17 +107,28 @@ const Routes = () => {
 
       <section className="py-10 bg-travel-primary/5">
         <div className="container mx-auto px-4">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Explore Travel Routes</h1>
-            <p className="text-muted-foreground">
-              Discover amazing journeys crafted by travelers all around the world
-            </p>
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Исследуйте маршруты</h1>
+              <p className="text-muted-foreground">
+                Откройте для себя удивительные путешествия, созданные путешественниками со всего мира
+              </p>
+            </div>
+            
+            {user && (
+              <Button asChild className="bg-travel-primary hover:bg-travel-primary/90 hidden md:flex">
+                <Link to="/routes/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Создать маршрут
+                </Link>
+              </Button>
+            )}
           </div>
 
           <div className="mb-6">
             <form onSubmit={handleSearch} className="flex gap-2">
               <Input
-                placeholder="Search routes by name or location..."
+                placeholder="Поиск маршрутов по названию или месту..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="max-w-md"
@@ -244,65 +140,79 @@ const Routes = () => {
           </div>
 
           <div className="flex flex-col md:flex-row gap-6">
-            {/* Filter sidebar */}
+            {/* Sidebar фильтров */}
             <div className="md:w-1/4 lg:w-1/5">
-              <FilterBar categories={categories} onFilterChange={handleFilterChange} />
+              <FilterBar 
+                categories={allCategories}
+                onFilterChange={handleFilterChange}
+                initialFilters={filters}
+              />
             </div>
 
-            {/* Routes grid */}
+            {/* Сетка маршрутов */}
             <div className="md:w-3/4 lg:w-4/5">
+              {user && (
+                <Button asChild className="mb-4 w-full md:hidden bg-travel-primary hover:bg-travel-primary/90">
+                  <Link to="/routes/create">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Создать маршрут
+                  </Link>
+                </Button>
+              )}
+              
               {loading ? (
                 <div className="flex justify-center items-center h-60">
-                  <div className="text-travel-primary">Loading routes...</div>
+                  <div className="text-travel-primary">Загрузка маршрутов...</div>
                 </div>
-              ) : filteredRoutes.length === 0 ? (
+              ) : sortedRoutes.length === 0 ? (
                 <div className="text-center py-12">
-                  <h2 className="text-lg font-medium mb-2">No routes found</h2>
+                  <h2 className="text-lg font-medium mb-2">Маршруты не найдены</h2>
                   <p className="text-muted-foreground mb-4">
-                    Try adjusting your filters or search query
+                    Попробуйте изменить параметры фильтрации или поисковый запрос
                   </p>
-                  <Button onClick={handleFilterChange.bind(null, {
+                  <Button onClick={() => handleFilterChange({
                     categories: [],
                     difficulty: null,
                     duration: [1, 14],
                     cost: [0, 5000],
                     sort: "popular"
                   })}>
-                    Clear filters
+                    Сбросить фильтры
                   </Button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredRoutes.map((route) => (
+                  {sortedRoutes.map((route) => (
                     <RouteCard
                       key={route.id}
                       id={route.id}
                       title={route.title}
                       description={route.description}
-                      imageUrl={route.imageUrl}
+                      imageUrl={route.image_url || `https://source.unsplash.com/random/?travel,${route.title}`}
                       duration={route.duration}
                       distance={route.distance}
-                      difficulty={route.difficulty}
-                      cost={route.cost}
+                      difficulty={route.difficulty_level || "Средний"}
+                      cost={route.estimated_cost}
                       rating={route.rating}
-                      reviewCount={route.reviewCount}
+                      reviewCount={route.review_count}
                       categories={route.categories}
                       creator={route.creator}
-                      isFavorited={favorites.includes(route.id)}
-                      onFavoriteToggle={toggleFavorite}
+                      isFavorited={route.is_favorited}
                     />
                   ))}
                 </div>
               )}
 
-              {/* Pagination placeholder */}
-              <div className="flex justify-center mt-8">
-                <Button variant="outline" className="mx-1">Prev</Button>
-                <Button variant="outline" className="mx-1 bg-travel-primary/10">1</Button>
-                <Button variant="outline" className="mx-1">2</Button>
-                <Button variant="outline" className="mx-1">3</Button>
-                <Button variant="outline" className="mx-1">Next</Button>
-              </div>
+              {/* Заглушка пагинации */}
+              {sortedRoutes.length > 0 && (
+                <div className="flex justify-center mt-8">
+                  <Button variant="outline" className="mx-1">Назад</Button>
+                  <Button variant="outline" className="mx-1 bg-travel-primary/10">1</Button>
+                  <Button variant="outline" className="mx-1">2</Button>
+                  <Button variant="outline" className="mx-1">3</Button>
+                  <Button variant="outline" className="mx-1">Вперед</Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -313,4 +223,4 @@ const Routes = () => {
   );
 };
 
-export default Routes;
+export default RoutesPage;
