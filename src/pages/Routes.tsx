@@ -25,81 +25,95 @@ const RoutesPage = () => {
     sort: "popular"
   });
   const [loading, setLoading] = useState(true);
+  const [filteredRoutes, setFilteredRoutes] = useState<RouteWithDetails[]>([]);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
+  // Загрузка данных при монтировании
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       
-      // Получаем категории
-      const categories = await getCategories();
-      setAllCategories(categories);
-      
-      // Получаем маршруты
-      const routes = await getRoutes();
-      setRoutes(routes);
-      
-      setLoading(false);
+      try {
+        // Получаем категории
+        const categories = await getCategories();
+        setAllCategories(categories);
+        
+        // Получаем маршруты
+        const routes = await getRoutes();
+        setRoutes(routes);
+        
+        // Инициализируем отфильтрованные маршруты
+        setFilteredRoutes(routes);
+      } catch (error) {
+        console.error("Ошибка при загрузке данных:", error);
+      } finally {
+        setLoading(false);
+        setInitialLoadComplete(true);
+      }
     };
 
     fetchData();
   }, []);
 
-  // Фильтрация маршрутов
-  const filteredRoutes = routes.filter(route => {
-    if (searchQuery && !route.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !route.description.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
+  // Фильтрация маршрутов при изменении фильтров или поискового запроса
+  useEffect(() => {
+    if (!initialLoadComplete) return;
     
-    if (filters.categories.length > 0 && !route.categories.some(cat => filters.categories.includes(cat.id))) {
-      return false;
-    }
+    setLoading(true);
     
-    if (filters.difficulty && route.difficulty_level !== filters.difficulty) {
-      return false;
-    }
-    
-    if (route.duration < filters.duration[0] || route.duration > filters.duration[1]) {
-      return false;
-    }
-    
-    if (route.estimated_cost && (route.estimated_cost < filters.cost[0] || route.estimated_cost > filters.cost[1])) {
-      return false;
-    }
-    
-    return true;
-  });
+    // Небольшая задержка для визуального эффекта загрузки
+    const timeoutId = setTimeout(() => {
+      const filtered = routes.filter(route => {
+        if (searchQuery && !route.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
+            !route.description.toLowerCase().includes(searchQuery.toLowerCase())) {
+          return false;
+        }
+        
+        if (filters.categories.length > 0 && !route.categories.some(cat => filters.categories.includes(cat.id))) {
+          return false;
+        }
+        
+        if (filters.difficulty && route.difficulty_level !== filters.difficulty) {
+          return false;
+        }
+        
+        if (route.duration < filters.duration[0] || route.duration > filters.duration[1]) {
+          return false;
+        }
+        
+        if (route.estimated_cost && (route.estimated_cost < filters.cost[0] || route.estimated_cost > filters.cost[1])) {
+          return false;
+        }
+        
+        return true;
+      });
 
-  // Сортировка маршрутов
-  const sortedRoutes = [...filteredRoutes].sort((a, b) => {
-    if (filters.sort === "popular") {
-      return b.rating - a.rating;
-    } else if (filters.sort === "newest") {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    } else if (filters.sort === "oldest") {
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-    }
-    return 0;
-  });
+      // Сортировка результатов
+      const sorted = [...filtered].sort((a, b) => {
+        if (filters.sort === "popular") {
+          return b.rating - a.rating;
+        } else if (filters.sort === "newest") {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        } else if (filters.sort === "oldest") {
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        }
+        return 0;
+      });
+
+      setFilteredRoutes(sorted);
+      setLoading(false);
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, filters, routes, initialLoadComplete]);
 
   const handleFilterChange = (newFilters: any) => {
-    setLoading(true);
     setFilters(newFilters);
-    
-    // Имитируем задержку API
-    setTimeout(() => {
-      setLoading(false);
-    }, 200);
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    
-    // Имитируем задержку API
-    setTimeout(() => {
-      setLoading(false);
-    }, 200);
+    // Поиск происходит автоматически через useEffect
   };
 
   return (
@@ -161,11 +175,11 @@ const RoutesPage = () => {
                 </Button>
               )}
               
-              {loading ? (
+              {loading && !initialLoadComplete ? (
                 <div className="flex justify-center items-center h-60">
                   <div className="text-travel-primary">Загрузка маршрутов...</div>
                 </div>
-              ) : sortedRoutes.length === 0 ? (
+              ) : filteredRoutes.length === 0 ? (
                 <div className="text-center py-12">
                   <h2 className="text-lg font-medium mb-2">Маршруты не найдены</h2>
                   <p className="text-muted-foreground mb-4">
@@ -183,7 +197,7 @@ const RoutesPage = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sortedRoutes.map((route) => (
+                  {filteredRoutes.map((route) => (
                     <RouteCard
                       key={route.id}
                       id={route.id}
@@ -204,8 +218,15 @@ const RoutesPage = () => {
                 </div>
               )}
 
+              {/* Индикатор загрузки при фильтрации */}
+              {loading && initialLoadComplete && (
+                <div className="flex justify-center items-center h-20 mt-4">
+                  <div className="text-travel-primary">Обновление результатов...</div>
+                </div>
+              )}
+
               {/* Заглушка пагинации */}
-              {sortedRoutes.length > 0 && (
+              {filteredRoutes.length > 0 && (
                 <div className="flex justify-center mt-8">
                   <Button variant="outline" className="mx-1">Назад</Button>
                   <Button variant="outline" className="mx-1 bg-travel-primary/10">1</Button>
