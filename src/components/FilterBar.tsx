@@ -18,7 +18,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { Category } from "@/api/supabaseApi";
+import { Category } from "@/api/types";
 import { FilterX } from "lucide-react";
 
 interface FilterBarProps {

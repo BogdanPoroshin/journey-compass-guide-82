@@ -119,7 +119,8 @@ export const getRoutes = async (filters?: any) => {
         rating: avgRating,
         review_count: reviews.length,
         image_url: primaryImage?.image_url,
-        creator: route.creator as User
+        creator: route.creator as User,
+        is_favorited: false
       };
     }) || [];
 
@@ -188,7 +189,8 @@ export const getRouteById = async (id: string, userId?: string) => {
       review_count: reviews.length,
       image_url: primaryImage?.image_url,
       is_favorited: isFavorited,
-      points: routePoints as PointOfInterest[]
+      points: routePoints as PointOfInterest[],
+      creator: data?.creator as User
     };
 
     return routeWithDetails;

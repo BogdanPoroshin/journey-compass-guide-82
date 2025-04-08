@@ -7,7 +7,8 @@ import RouteCard from "@/components/RouteCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/contexts/UserContext";
-import { getFavoriteRoutes, toggleFavorite, RouteWithDetails } from "@/api/supabaseApi";
+import { getFavoriteRoutes, toggleFavorite } from "@/api/supabaseApi";
+import { RouteWithDetails } from "@/api/types";
 import { Heart, Compass, ArrowLeft } from "lucide-react";
 
 const FavoritesPage = () => {

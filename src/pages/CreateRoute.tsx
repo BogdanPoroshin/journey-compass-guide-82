@@ -1,11 +1,18 @@
-
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
+import MapView from "@/components/MapView";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -15,100 +22,123 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { getCategories, createRoute } from "@/api/supabaseApi";
+import { Category } from "@/api/types";
 import { useUser } from "@/contexts/UserContext";
-import { createRoute, getCategories, Category } from "@/api/supabaseApi";
-import { ArrowLeft, Save, Plus, Minus, Map } from "lucide-react";
-import { useEffect } from "react";
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft, Upload, Info } from "lucide-react";
+
+const routeSchema = z.object({
+  title: z.string().min(3, {
+    message: "Название должно содержать не менее 3 символов.",
+  }),
+  description: z.string().min(10, {
+    message: "Описание должно содержать не менее 10 символов.",
+  }),
+  duration: z.number().min(1, {
+    message: "Продолжительность должна быть не менее 1 дня.",
+  }),
+  distance: z.number().nullable(),
+  difficulty_level: z.string().nullable(),
+  estimated_cost: z.number().nullable(),
+  is_public: z.boolean().default(false),
+  categories: z.array(z.number()).optional(),
+  image_url: z.string().optional(),
+  points: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string().nullable(),
+      latitude: z.number(),
+      longitude: z.number(),
+      address: z.string().nullable(),
+      type: z.string().nullable(),
+    })
+  ).optional(),
+});
 
 const CreateRoutePage = () => {
-  const { user } = useUser();
   const navigate = useNavigate();
+  const { user } = useUser();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    duration: 1,
-    distance: "",
-    difficulty_level: "Средний",
-    estimated_cost: "",
-    categories: [] as number[],
-    is_public: true,
-    image_url: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=2070&auto=format&fit=crop"
-  });
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [isPublic, setIsPublic] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const data = await getCategories();
-      setCategories(data);
+      const categoriesData = await getCategories();
+      setCategories(categoriesData);
     };
 
     fetchCategories();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
+  const form = useForm<z.infer<typeof routeSchema>>({
+    resolver: zodResolver(routeSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      duration: 1,
+      distance: null,
+      difficulty_level: null,
+      estimated_cost: null,
+      is_public: false,
+      categories: [],
+      image_url: undefined,
+      points: [],
+    },
+  });
 
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    // Преобразуем строковое значение в число или в пустую строку, если значение некорректно
-    const numValue = value === "" ? "" : parseFloat(value);
-    setFormData({ ...formData, [name]: numValue });
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleCategoryChange = (categoryId: number, checked: boolean) => {
-    if (checked) {
-      setFormData({
-        ...formData,
-        categories: [...formData.categories, categoryId],
-      });
-    } else {
-      setFormData({
-        ...formData,
-        categories: formData.categories.filter((id) => id !== categoryId),
-      });
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const onSubmit = async (values: z.infer<typeof routeSchema>) => {
     if (!user) {
-      alert("Необходимо войти в систему!");
+      toast({
+        title: "Ошибка",
+        description: "Необходимо войти в систему для создания маршрута.",
+        variant: "destructive",
+      });
       return;
     }
-    
-    if (!formData.title || !formData.description || !formData.duration) {
-      alert("Пожалуйста, заполните все обязательные поля!");
-      return;
+
+    const routeData = {
+      ...values,
+      image_url: imageUrl,
+      is_public: isPublic,
+    };
+
+    const newRoute = await createRoute(routeData, user.id);
+
+    if (newRoute) {
+      toast({
+        title: "Маршрут создан",
+        description: "Ваш маршрут успешно создан.",
+      });
+      navigate(`/routes/${newRoute.id}`);
+    } else {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать маршрут.",
+        variant: "destructive",
+      });
     }
-    
-    setLoading(true);
-    
-    try {
-      const route = await createRoute(formData, user.id);
-      
-      if (route) {
-        navigate(`/routes/${route.id}`);
-      }
-    } catch (error) {
-      console.error("Ошибка при создании маршрута:", error);
-    } finally {
-      setLoading(false);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Here you would typically upload the image to a service like Supabase storage
+      // and get the URL to store in the form.
+      // For this example, we'll just use a placeholder URL.
+      setImageUrl("https://source.unsplash.com/random/?travel");
+      toast({
+        title: "Изображение загружено",
+        description: "Изображение успешно загружено.",
+      });
     }
   };
 
@@ -117,190 +147,233 @@ const CreateRoutePage = () => {
       <Navbar />
 
       <main className="flex-grow py-10 bg-muted/30">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <Link to="/routes" className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
-            <ArrowLeft className="h-4 w-4" />
-            Назад к маршрутам
-          </Link>
+        <div className="container mx-auto px-4">
+          <div className="mb-6">
+            <Button variant="ghost" onClick={() => navigate("/routes")} className="gap-1 mb-2">
+              <ArrowLeft className="h-4 w-4" />
+              Назад к маршрутам
+            </Button>
+            <h1 className="text-3xl font-bold">Создание нового маршрута</h1>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">Создать новый маршрут</CardTitle>
-              <CardDescription>
-                Заполните информацию о вашем маршруте, чтобы поделиться им с другими путешественниками
-              </CardDescription>
-            </CardHeader>
-            
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Основная информация */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Основная информация</h3>
-                  
-                  <div className="grid gap-4">
-                    <div>
-                      <Label htmlFor="title">Название маршрута *</Label>
-                      <Input
-                        id="title"
-                        name="title"
-                        value={formData.title}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="Например: Золотое кольцо России"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="description">Описание маршрута *</Label>
-                      <Textarea
-                        id="description"
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="Опишите маршрут, его особенности и достопримечательности"
-                        rows={5}
-                      />
-                    </div>
-                  </div>
-                </div>
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Название маршрута</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Введите название маршрута" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                {/* Детали маршрута */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Детали маршрута</h3>
-                  
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Описание маршрута</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Опишите маршрут, его особенности и интересные места"
+                            className="resize-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="duration">Продолжительность (дней) *</Label>
-                      <Input
-                        id="duration"
-                        name="duration"
-                        type="number"
-                        min="1"
-                        value={formData.duration}
-                        onChange={handleNumberChange}
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="distance">Расстояние (км)</Label>
-                      <Input
-                        id="distance"
-                        name="distance"
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={formData.distance}
-                        onChange={handleNumberChange}
-                        placeholder="Необязательно"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="difficulty_level">Уровень сложности</Label>
-                      <Select
-                        value={formData.difficulty_level}
-                        onValueChange={(value) => handleSelectChange("difficulty_level", value)}
-                      >
-                        <SelectTrigger id="difficulty_level">
-                          <SelectValue placeholder="Выберите уровень сложности" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Легкий">Легкий</SelectItem>
-                          <SelectItem value="Средний">Средний</SelectItem>
-                          <SelectItem value="Сложный">Сложный</SelectItem>
-                          <SelectItem value="Экстремальный">Экстремальный</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="estimated_cost">Ориентировочная стоимость (₽)</Label>
-                      <Input
-                        id="estimated_cost"
-                        name="estimated_cost"
-                        type="number"
-                        min="0"
-                        step="100"
-                        value={formData.estimated_cost}
-                        onChange={handleNumberChange}
-                        placeholder="Необязательно"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Категории */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Категории</h3>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {categories.map((category) => (
-                      <div key={category.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`category-${category.id}`}
-                          checked={formData.categories.includes(category.id)}
-                          onCheckedChange={(checked) =>
-                            handleCategoryChange(category.id, checked as boolean)
-                          }
-                        />
-                        <label
-                          htmlFor={`category-${category.id}`}
-                          className="text-sm cursor-pointer"
-                        >
-                          {category.name}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Дополнительные настройки */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Дополнительные настройки</h3>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="is_public"
-                      checked={formData.is_public}
-                      onCheckedChange={(checked) =>
-                        setFormData({
-                          ...formData,
-                          is_public: checked as boolean,
-                        })
-                      }
+                    <FormField
+                      control={form.control}
+                      name="duration"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Продолжительность (дни)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Укажите примерную продолжительность"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <label
-                      htmlFor="is_public"
-                      className="text-sm cursor-pointer"
-                    >
-                      Сделать маршрут публичным (доступным для всех пользователей)
-                    </label>
+
+                    <FormField
+                      control={form.control}
+                      name="distance"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Примерное расстояние (км)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Укажите примерное расстояние"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="difficulty_level"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Уровень сложности</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Выберите уровень сложности" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Легкий">Легкий</SelectItem>
+                            <SelectItem value="Средний">Средний</SelectItem>
+                            <SelectItem value="Сложный">Сложный</SelectItem>
+                            <SelectItem value="Экстремальный">Экстремальный</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="estimated_cost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Примерная стоимость (₽)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="Укажите примерную стоимость"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="categories"
+                    render={() => (
+                      <FormItem>
+                        <FormLabel>Категории</FormLabel>
+                        <div className="flex flex-wrap gap-2">
+                          {categories.map((category) => (
+                            <FormField
+                              key={category.id}
+                              control={form.control}
+                              name="categories"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    className="flex flex-row items-center space-x-2 space-y-0"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(category.id)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([...(field.value || []), category.id])
+                                            : field.onChange(
+                                              field.value?.filter(
+                                                (value: number) => value !== category.id
+                                              )
+                                            );
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">
+                                      {category.name}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="isPublic">Сделать маршрут общедоступным?</Label>
+                    <Switch
+                      id="isPublic"
+                      checked={isPublic}
+                      onCheckedChange={(checked) => {
+                        setIsPublic(checked);
+                        form.setValue("is_public", checked || false);
+                      }}
+                    />
                   </div>
                 </div>
-              </CardContent>
-              
-              <CardFooter className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate("/routes")}
-                  disabled={loading}
-                >
-                  Отмена
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-travel-primary hover:bg-travel-primary/90"
-                  disabled={loading}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {loading ? "Сохранение..." : "Сохранить маршрут"}
-                </Button>
-              </CardFooter>
+
+                {/* Изображение и карта */}
+                <div className="space-y-4">
+                  <div className="border rounded-lg overflow-hidden bg-background">
+                    <MapView height="300px" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="image">
+                      Изображение маршрута
+                      <Info className="h-4 w-4 inline-block ml-1 align-text-top" />
+                    </Label>
+                    <Input
+                      type="file"
+                      id="image"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <Button asChild variant="outline">
+                      <label htmlFor="image" className="flex items-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        Загрузить изображение
+                      </label>
+                    </Button>
+                    {imageUrl && (
+                      <div className="relative">
+                        <img
+                          src={imageUrl}
+                          alt="Preview"
+                          className="rounded-md shadow-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <Button type="submit" className="bg-travel-primary hover:bg-travel-primary/90">
+                Создать маршрут
+              </Button>
             </form>
-          </Card>
+          </Form>
         </div>
       </main>
 

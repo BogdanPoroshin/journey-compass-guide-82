@@ -7,7 +7,8 @@ import Footer from "@/components/Footer";
 import FilterBar from "@/components/FilterBar";
 import RouteCard from "@/components/RouteCard";
 import { Search, Plus } from "lucide-react";
-import { getRoutes, getCategories, RouteWithDetails, Category } from "@/api/supabaseApi";
+import { getRoutes, getCategories } from "@/api/supabaseApi";
+import { RouteWithDetails, Category } from "@/api/types";
 import { useUser } from "@/contexts/UserContext";
 import { Link } from "react-router-dom";
 

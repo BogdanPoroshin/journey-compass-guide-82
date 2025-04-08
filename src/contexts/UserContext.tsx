@@ -1,7 +1,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { loginDemo, User } from "@/api/supabaseApi";
+import { loginDemo } from "@/api/supabaseApi";
+import { User } from "@/api/types";
 import { toast } from "@/hooks/use-toast";
 
 interface UserContextProps {

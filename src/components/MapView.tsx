@@ -9,8 +9,8 @@ import { PointOfInterest, Route } from "@/api/types";
 
 interface MapViewProps {
   routes?: Route[];
-  selectedRouteId?: number;
-  onRouteSelect?: (routeId: number) => void;
+  selectedRouteId?: string;
+  onRouteSelect?: (routeId: string) => void;
   height?: string;
   interactive?: boolean;
   points?: PointOfInterest[];
@@ -228,7 +228,7 @@ const MapView = ({
                   {routes.map(route => (
                     <Badge 
                       key={route.id}
-                      onClick={() => onRouteSelect && onRouteSelect(Number(route.id))}
+                      onClick={() => onRouteSelect && onRouteSelect(route.id)}
                       className="cursor-pointer hover:bg-travel-primary"
                     >
                       {route.title}
