@@ -115,6 +115,7 @@ export const getRoutes = async (filters?: any) => {
       return {
         ...(route as Route),
         categories,
+        creator: route.creator as User,
         rating: avgRating,
         review_count: reviews.length,
         image_url: primaryImage?.image_url,
@@ -343,11 +344,11 @@ export const getFavoriteRoutes = async (userId: string) => {
       return {
         ...(route as Route),
         categories,
+        creator: route.creator as User,
         rating: avgRating,
         review_count: reviews.length,
         image_url: primaryImage?.image_url,
-        is_favorited: true,
-        creator: route.creator as User
+        is_favorited: true
       };
     }) || [];
 
@@ -355,7 +356,7 @@ export const getFavoriteRoutes = async (userId: string) => {
   } catch (error: any) {
     toast({
       title: "Ошибка загрузки избранного",
-      description: error.message || "Не удалось загрузить избранные маршруты.",
+      description: error.message || "Не удалось загрузить избраные маршруты.",
       variant: "destructive"
     });
     return [];
