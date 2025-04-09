@@ -13,7 +13,7 @@ const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 // CORS заголовки для возможности вызова из фронтенда
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-action",
 };
 
 // Функция для отправки сообщения пользователю
@@ -295,11 +295,10 @@ serve(async (req) => {
     );
   }
   
-  // Получаем URL и параметры запроса
-  const url = new URL(req.url);
-  const action = url.searchParams.get('action');
+  // Проверяем заголовок x-action
+  const action = req.headers.get('x-action');
   
-  // Маршрут для установки webhook - теперь проверяем по query параметру
+  // Маршрут для установки webhook - теперь проверяем по заголовку
   if (action === 'setup-webhook') {
     const result = await setWebhook();
     return new Response(
