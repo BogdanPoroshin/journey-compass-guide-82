@@ -295,9 +295,12 @@ serve(async (req) => {
     );
   }
   
-  // Маршрут для установки webhook
+  // Получаем URL и параметры запроса
   const url = new URL(req.url);
-  if (url.pathname.endsWith('/setup-webhook')) {
+  const action = url.searchParams.get('action');
+  
+  // Маршрут для установки webhook - теперь проверяем по query параметру
+  if (action === 'setup-webhook') {
     const result = await setWebhook();
     return new Response(
       JSON.stringify(result),
@@ -306,13 +309,31 @@ serve(async (req) => {
   }
 
   try {
-    // Обработка входящих обновлений от Telegram
-    const update = await req.json();
-    console.log("Received update:", JSON.stringify(update));
-    
-    // Обработка сообщений
-    if (update.message) {
-      await handleCommand(update.message);
+    // Проверяем, пустой ли запрос, чтобы избежать ошибки при парсинге JSON
+    const contentLength = req.headers.get('content-length');
+    if (!contentLength || parseInt(contentLength) === 0) {
+      return new Response(
+        JSON.stringify({ ok: true, message: "Empty request body" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  
+    // Пробуем разобрать JSON только если есть данные
+    try {
+      // Обработка входящих обновлений от Telegram
+      const update = await req.json();
+      console.log("Received update:", JSON.stringify(update));
+      
+      // Обработка сообщений
+      if (update.message) {
+        await handleCommand(update.message);
+      }
+    } catch (jsonError) {
+      console.error("Error parsing JSON:", jsonError);
+      return new Response(
+        JSON.stringify({ ok: false, error: "Invalid JSON in request body" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     return new Response(JSON.stringify({ ok: true }), {

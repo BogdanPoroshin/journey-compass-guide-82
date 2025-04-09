@@ -13,9 +13,10 @@ export const TelegramBotAdmin = () => {
     setIsLoading(true);
 
     try {
+      // Исправление: используем правильный формат вызова функции без параметра url
       const { data, error } = await supabase.functions.invoke('telegram-bot', {
-        url: '/setup-webhook',
         method: 'GET',
+        query: { action: 'setup-webhook' }
       });
 
       if (error) throw error;
