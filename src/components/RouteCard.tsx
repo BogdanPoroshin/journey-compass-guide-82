@@ -3,11 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  Clock, MapPin, Star, DollarSign, Heart, 
-  Mountain, Beach, Buildings, LandPlot, Tent, Compass, 
-  Car, Bike, Ship, Palmtree, UtensilsCrossed, Wine
-} from "lucide-react";
+import { Clock, MapPin, Star, DollarSign, Heart } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { toggleFavorite } from "@/api/supabaseApi";
 import { useState } from "react";
@@ -87,26 +83,6 @@ const RouteCard = ({
     }
   };
 
-  // Функция для получения иконки категории
-  const getCategoryIcon = (categoryName: string) => {
-    const name = categoryName.toLowerCase();
-    
-    if (name.includes("горы") || name.includes("mountain")) return <Mountain className="h-3 w-3 mr-1" />;
-    if (name.includes("пляж") || name.includes("beach")) return <Beach className="h-3 w-3 mr-1" />;
-    if (name.includes("город") || name.includes("city")) return <Buildings className="h-3 w-3 mr-1" />;
-    if (name.includes("культур") || name.includes("cultural")) return <LandPlot className="h-3 w-3 mr-1" />;
-    if (name.includes("приключен") || name.includes("adventure")) return <Compass className="h-3 w-3 mr-1" />;
-    if (name.includes("природа") || name.includes("nature")) return <Palmtree className="h-3 w-3 mr-1" />;
-    if (name.includes("еда") || name.includes("food")) return <UtensilsCrossed className="h-3 w-3 mr-1" />;
-    if (name.includes("вино") || name.includes("wine")) return <Wine className="h-3 w-3 mr-1" />;
-    if (name.includes("авто") || name.includes("road")) return <Car className="h-3 w-3 mr-1" />;
-    if (name.includes("велосипед") || name.includes("bike")) return <Bike className="h-3 w-3 mr-1" />;
-    if (name.includes("море") || name.includes("water")) return <Ship className="h-3 w-3 mr-1" />;
-    
-    // Для остальных категорий
-    return <Tent className="h-3 w-3 mr-1" />;
-  };
-
   return (
     <Link to={`/routes/${id}`}>
       <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 route-card">
@@ -136,9 +112,8 @@ const RouteCard = ({
                 <Badge
                   key={category.id}
                   variant="outline"
-                  className="bg-travel-accent/90 text-travel-secondary border-none text-xs flex items-center"
+                  className="bg-travel-accent/90 text-travel-secondary border-none text-xs"
                 >
-                  {getCategoryIcon(category.name)}
                   {category.name}
                 </Badge>
               ))}
