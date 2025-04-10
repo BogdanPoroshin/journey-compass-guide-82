@@ -11,6 +11,7 @@ import RouteDetail from "./pages/RouteDetail";
 import NotFound from "./pages/NotFound";
 import FavoritesPage from "./pages/Favorites";
 import CreateRoutePage from "./pages/CreateRoute";
+import ChatBot from "./components/ChatBot";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <ChatBot />
         </BrowserRouter>
       </TooltipProvider>
     </UserProvider>

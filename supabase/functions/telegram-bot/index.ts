@@ -267,6 +267,62 @@ async function handleCommand(message) {
   }
 }
 
+// Новая функция для обработки запросов из веб-чата
+async function handleChatQuery(query: string) {
+  try {
+    // Начинаем с общих ответов на запросы
+    if (query.toLowerCase().includes("маршрут") || query.toLowerCase().includes("маршруты")) {
+      // Если пользователь спрашивает о маршрутах
+      const routes = await getTopRoutes();
+      if (routes.length > 0) {
+        let response = "Вот несколько популярных маршрутов:\n\n";
+        for (const route of routes) {
+          response += `• ${route.title} - ${route.description.substring(0, 50)}...\n`;
+        }
+        return response;
+      }
+    }
+    
+    // Проверяем, не является ли запрос поиском
+    if (query.toLowerCase().includes("найти") || query.toLowerCase().includes("поиск")) {
+      const searchTerm = query.replace(/найти|поиск/gi, "").trim();
+      if (searchTerm) {
+        const results = await searchRoutes(searchTerm);
+        if (results.length > 0) {
+          let response = `По запросу "${searchTerm}" найдено ${results.length} маршрутов:\n\n`;
+          for (const route of results) {
+            response += `• ${route.title} - ${route.description.substring(0, 50)}...\n`;
+          }
+          return response;
+        } else {
+          return `По запросу "${searchTerm}" ничего не найдено. Попробуйте другие ключевые слова.`;
+        }
+      }
+    }
+    
+    // Общая информация о сервисе
+    if (query.toLowerCase().includes("что такое") || query.toLowerCase().includes("о сервисе") || query.toLowerCase().includes("о сайте")) {
+      return "Наш сервис помогает путешественникам находить и создавать маршруты для путешествий. Пользователи могут публиковать свои маршруты, делиться опытом и оставлять отзывы о местах, которые они посетили.";
+    }
+    
+    // Ответы на приветствия
+    if (query.toLowerCase().includes("привет") || query.toLowerCase().includes("здравствуй")) {
+      return "Привет! Я чат-бот помощник по маршрутам. Спрашивайте меня о популярных маршрутах, категориях или о том, как пользоваться сервисом!";
+    }
+    
+    // Ответы на благодарности
+    if (query.toLowerCase().includes("спасибо") || query.toLowerCase().includes("благодар")) {
+      return "Рад был помочь! Если у вас возникнут еще вопросы, обращайтесь.";
+    }
+    
+    // Если не смогли определить запрос
+    return "Извините, я не совсем понял ваш запрос. Попробуйте спросить о популярных маршрутах, о том, как создать маршрут или как пользоваться сервисом.";
+  } catch (error) {
+    console.error("Error handling chat query:", error);
+    return "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.";
+  }
+}
+
 // Установка webhook для бота
 async function setWebhook() {
   try {
@@ -298,13 +354,40 @@ serve(async (req) => {
   // Проверяем заголовок x-action
   const action = req.headers.get('x-action');
   
-  // Маршрут для установки webhook - теперь проверяем по заголовку
+  // Маршрут для установки webhook
   if (action === 'setup-webhook') {
     const result = await setWebhook();
     return new Response(
       JSON.stringify(result),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+  }
+  
+  // Новый маршрут для запросов из веб-чата
+  if (action === 'chat-query') {
+    try {
+      const { query } = await req.json();
+      
+      if (!query || typeof query !== 'string') {
+        return new Response(
+          JSON.stringify({ error: "Query parameter is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      const response = await handleChatQuery(query);
+      
+      return new Response(
+        JSON.stringify({ response }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (error) {
+      console.error("Error handling chat query:", error);
+      return new Response(
+        JSON.stringify({ error: "Failed to process query" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   }
 
   try {
