@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/contexts/UserContext";
-import { Compass, Heart, Route, Menu, X } from "lucide-react";
+import { Compass, Heart, Route, Menu, X, UserPlus } from "lucide-react";
 import { useState } from "react";
 
 const Navbar = () => {
@@ -111,9 +111,17 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={handleDemoLogin} className="bg-travel-primary hover:bg-travel-primary/90">
-              Демо-режим
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/auth">Войти</Link>
+              </Button>
+              <Button asChild className="bg-travel-primary hover:bg-travel-primary/90">
+                <Link to="/auth?tab=register">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Регистрация
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
 
@@ -181,12 +189,26 @@ const Navbar = () => {
                 </Button>
               </div>
             ) : (
-              <Button 
-                className="w-full bg-travel-primary hover:bg-travel-primary/90" 
-                onClick={handleDemoLogin}
-              >
-                Демо-режим
-              </Button>
+              <div className="flex flex-col gap-2 mt-4">
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  asChild
+                >
+                  <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                    Войти
+                  </Link>
+                </Button>
+                <Button 
+                  className="w-full bg-travel-primary hover:bg-travel-primary/90" 
+                  asChild
+                >
+                  <Link to="/auth?tab=register" onClick={() => setMobileMenuOpen(false)}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Регистрация
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
         </div>

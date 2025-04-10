@@ -11,6 +11,7 @@ interface UserContextProps {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   loginAsDemoUser: () => Promise<boolean>;
+  register: (username: string, email: string, password: string, full_name?: string) => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextProps | undefined>(undefined);
@@ -60,11 +61,74 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (userError) throw userError;
       
       setUser(userData as User);
+      
+      toast({
+        title: "Вход выполнен",
+        description: "Вы успешно вошли в систему."
+      });
+      
       return true;
     } catch (error: any) {
       toast({
         title: "Ошибка входа",
         description: error.message || "Не удалось войти. Проверьте данные и попробуйте снова.",
+        variant: "destructive"
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Регистрация нового пользователя
+  const register = async (username: string, email: string, password: string, full_name: string = "") => {
+    try {
+      setIsLoading(true);
+      
+      // Проверяем, существует ли пользователь с таким email или username
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select()
+        .or(`email.eq.${email},username.eq.${username}`)
+        .maybeSingle();
+        
+      if (existingUser) {
+        if (existingUser.email === email) {
+          throw new Error("Пользователь с таким email уже существует");
+        } else {
+          throw new Error("Пользователь с таким именем уже существует");
+        }
+      }
+      
+      // Создаем нового пользователя
+      const { data: newUser, error } = await supabase
+        .from('users')
+        .insert([
+          { 
+            username, 
+            email, 
+            password_hash: password, // В реальном приложении хеширование пароля должно выполняться на сервере
+            full_name: full_name || null 
+          }
+        ])
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Автоматически входим как новый пользователь
+      setUser(newUser as User);
+      
+      toast({
+        title: "Регистрация успешна",
+        description: "Вы успешно зарегистрировались и вошли в систему."
+      });
+      
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Ошибка регистрации",
+        description: error.message || "Не удалось зарегистрироваться. Пожалуйста, попробуйте позже.",
         variant: "destructive"
       });
       return false;
@@ -130,7 +194,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     isLoading,
     login,
     logout,
-    loginAsDemoUser
+    loginAsDemoUser,
+    register
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
