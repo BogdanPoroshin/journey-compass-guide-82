@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,10 +14,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserPlus, LogIn, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 // Схема для валидации логина
 const loginSchema = z.object({
@@ -35,9 +34,26 @@ const registerSchema = z.object({
 });
 
 const Auth = () => {
-  const { login, register, isLoading } = useUser();
+  const { login, register, isLoading, user } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<string>("login");
+
+  // Устанавливаем активную вкладку на основе URL параметра
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tab = searchParams.get("tab");
+    if (tab === "register") {
+      setActiveTab("register");
+    }
+  }, [location]);
+
+  // Если пользователь уже авторизован, перенаправляем на главную
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   // Форма для входа
   const loginForm = useForm<z.infer<typeof loginSchema>>({
@@ -61,9 +77,17 @@ const Auth = () => {
 
   // Обработчик логина
   const onLogin = async (values: z.infer<typeof loginSchema>) => {
-    const success = await login(values.email, values.password);
-    if (success) {
-      navigate("/");
+    try {
+      const success = await login(values.email, values.password);
+      if (success) {
+        navigate("/");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Ошибка входа",
+        description: error.message || "Не удалось войти. Пожалуйста, попробуйте снова.",
+        variant: "destructive"
+      });
     }
   };
 

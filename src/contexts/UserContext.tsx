@@ -26,9 +26,28 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       try {
         setIsLoading(true);
         
-        // Для упрощения, автоматически входим как демо-пользователь
-        const { user } = await loginDemo();
-        setUser(user);
+        const { data } = await supabase.auth.getSession();
+        
+        if (data.session) {
+          // Если есть сессия, получаем информацию о пользователе
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select()
+            .eq('email', data.session.user.email)
+            .maybeSingle();
+            
+          if (!userError && userData) {
+            setUser(userData as User);
+          } else {
+            // Если не удалось получить данные пользователя, используем демо
+            const { user } = await loginDemo();
+            setUser(user);
+          }
+        } else {
+          // Для упрощения, автоматически входим как демо-пользователь
+          const { user } = await loginDemo();
+          setUser(user);
+        }
       } catch (error) {
         console.error("Ошибка сессии:", error);
       } finally {
@@ -44,23 +63,29 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-      
-      // Получаем информацию о пользователе
-      const { data: userData, error: userError } = await supabase
+      // Проверяем, существует ли пользователь с таким email в таблице users
+      const { data: existingUser, error: existingUserError } = await supabase
         .from('users')
         .select()
         .eq('email', email)
-        .single();
+        .maybeSingle();
         
-      if (userError) throw userError;
+      if (existingUserError) {
+        console.error("Ошибка при проверке пользователя:", existingUserError);
+        throw new Error("Не удалось проверить пользователя");
+      }
       
-      setUser(userData as User);
+      if (!existingUser) {
+        throw new Error("Пользователь с таким email не найден");
+      }
+      
+      // Проверяем пароль (в реальном приложении это должно быть на сервере)
+      if (existingUser.password_hash !== password) {
+        throw new Error("Неверный пароль");
+      }
+      
+      // Если все проверки пройдены, устанавливаем пользователя
+      setUser(existingUser as User);
       
       toast({
         title: "Вход выполнен",
