@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MapView from "@/components/MapView";
-import { Input } from "@/components/ui/input";
+import { Input, NumericInput } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -107,9 +107,14 @@ const CreateRoutePage = () => {
 
     const routeData = {
       ...values,
+      duration: Number(values.duration),
+      distance: values.distance ? Number(values.distance) : null,
+      estimated_cost: values.estimated_cost ? Number(values.estimated_cost) : null,
       image_url: imageUrl,
       is_public: isPublic,
     };
+
+    console.log("Данные маршрута:", routeData);
 
     const newRoute = await createRoute(routeData, user.id);
 
@@ -131,9 +136,6 @@ const CreateRoutePage = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Here you would typically upload the image to a service like Supabase storage
-      // and get the URL to store in the form.
-      // For this example, we'll just use a placeholder URL.
       setImageUrl("https://source.unsplash.com/random/?travel");
       toast({
         title: "Изображение загружено",
@@ -159,7 +161,6 @@ const CreateRoutePage = () => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Основная информация */}
                 <div className="space-y-4">
                   <FormField
                     control={form.control}
@@ -197,13 +198,13 @@ const CreateRoutePage = () => {
                     <FormField
                       control={form.control}
                       name="duration"
-                      render={({ field }) => (
+                      render={({ field: { onChange, ...field } }) => (
                         <FormItem>
                           <FormLabel>Продолжительность (дни)</FormLabel>
                           <FormControl>
-                            <Input
-                              type="number"
+                            <NumericInput
                               placeholder="Укажите примерную продолжительность"
+                              onChange={(e) => onChange(e.target.valueAsNumber || 1)}
                               {...field}
                             />
                           </FormControl>
@@ -215,13 +216,17 @@ const CreateRoutePage = () => {
                     <FormField
                       control={form.control}
                       name="distance"
-                      render={({ field }) => (
+                      render={({ field: { onChange, value, ...field } }) => (
                         <FormItem>
                           <FormLabel>Примерное расстояние (км)</FormLabel>
                           <FormControl>
-                            <Input
-                              type="number"
+                            <NumericInput
                               placeholder="Укажите примерное расстояние"
+                              onChange={(e) => {
+                                const val = e.target.value === "" ? null : e.target.valueAsNumber;
+                                onChange(val);
+                              }}
+                              value={value === null ? "" : value}
                               {...field}
                             />
                           </FormControl>
@@ -258,13 +263,17 @@ const CreateRoutePage = () => {
                   <FormField
                     control={form.control}
                     name="estimated_cost"
-                    render={({ field }) => (
+                    render={({ field: { onChange, value, ...field } }) => (
                       <FormItem>
                         <FormLabel>Примерная стоимость (₽)</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
+                          <NumericInput
                             placeholder="Укажите примерную стоимость"
+                            onChange={(e) => {
+                              const val = e.target.value === "" ? null : e.target.valueAsNumber;
+                              onChange(val);
+                            }}
+                            value={value === null ? "" : value}
                             {...field}
                           />
                         </FormControl>
@@ -331,7 +340,6 @@ const CreateRoutePage = () => {
                   </div>
                 </div>
 
-                {/* Изображение и карта */}
                 <div className="space-y-4">
                   <div className="border rounded-lg overflow-hidden bg-background">
                     <MapView height="300px" />
