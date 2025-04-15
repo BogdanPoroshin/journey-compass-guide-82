@@ -1,0 +1,26 @@
+
+# Proper MIME type for JavaScript modules
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType application/javascript .mjs
+  AddType application/json .json
+  AddType text/css .css
+  AddType image/svg+xml .svg
+</IfModule>
+
+# Enable CORS for font files and JavaScript
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|mjs|css|json|woff|woff2|ttf|svg)$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>
+
+# Ensure correct handling of Single Page Application routes
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
