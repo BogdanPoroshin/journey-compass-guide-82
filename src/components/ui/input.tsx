@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -20,19 +19,4 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
 )
 Input.displayName = "Input"
 
-// Создаем специальную версию для числовых полей
-const NumericInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, ...props }, ref) => {
-    return (
-      <Input
-        type="number"
-        className={cn(className)}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
-)
-NumericInput.displayName = "NumericInput"
-
-export { Input, NumericInput }
+export { Input }
